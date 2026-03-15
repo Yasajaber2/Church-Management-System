@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContextSimple'
 import { useRouter } from 'next/navigation'
-import { classesAPI, API_BASE_URL } from '@/services/api'
+import { classesAPI, statisticsAPI, attendanceAPI } from '@/services/api'
 
 interface ConsecutiveChild {
   name: string
@@ -88,38 +88,7 @@ export default function ConsecutiveAttendancePage() {
       setLoading(true)
       setError('')
       
-      // Try multiple token sources
-      const token = localStorage.getItem('token') || 
-                   localStorage.getItem('auth_token') ||
-                   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2FiMDdmYjQ0NjhkMjEwMGUxZDA1NCIsInJvbGUiOiJhZG1pbiIsInVzZXJuYW1lIjoia2Vyb2xlcyIsImlhdCI6MTc1NDM5NDQ0MywiZXhwIjoxNzU0OTk5MjQzfQ._zOJADjrl1HcumdQhPU36tFOG4T1fUUiQd4UV8mOicFs'
-      
-      if (!token) {
-        setError('يرجى تسجيل الدخول أولاً')
-        return
-      }
-      
-      const url = `${API_BASE_URL}/statistics/consecutive-attendance-by-classes${classId ? `?classId=${classId}` : ''}`
-      console.log('📊 Fetching from:', url)
-      console.log('🔑 Using token:', token.substring(0, 50) + '...')
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      console.log('📊 Response status:', response.status)
-      console.log('📊 Response headers:', response.headers)
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Response error:', errorText)
-        throw new Error(`HTTP ${response.status}: ${errorText}`)
-      }
-      
-      const data = await response.json()
+      const data = await statisticsAPI.getConsecutiveAttendanceByClasses(classId)
       console.log('📊 API Response:', data)
       
       if (data.success) {
@@ -140,36 +109,24 @@ export default function ConsecutiveAttendancePage() {
 
   const fetchWeeklyData = async (classId?: string) => {
     try {
-      const token = localStorage.getItem('token') || 
-                   localStorage.getItem('auth_token') ||
-                   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2FiMDdmYjQ0NjhkMjEwMGUxZDA1NCIsInJvbGUiOiJhZG1pbiIsInVzZXJuYW1lIjoia2Vyb2xlcyIsImlhdCI6MTc1NDM5NDQ0MywiZXhwIjoxNzU0OTk5MjQzfQ._zOJADjrl1HcumdQhPU36tFOG4T1fUUiQd4UV8mOicFs'
-      
       const last4Fridays = getLastFridays(4)
       const weeklyStats: WeeklyAttendance[] = []
 
       for (const friday of last4Fridays) {
-        const url = `${API_BASE_URL}/attendance/children-with-status?date=${friday}${classId ? `&classId=${classId}` : ''}`
+        const result = await attendanceAPI.getChildrenWithStatus(friday, classId)
         
-        const response = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
+        if (result.success && result.data) {
+          const children = result.data
+          const totalChildren = children.length
+          const presentCount = children.filter((child: any) => child.attendance?.status === 'present').length
+          const attendanceRate = totalChildren > 0 ? (presentCount / totalChildren) * 100 : 0
           
-          if (data.success && data.data) {
-            const children = data.data
-            const totalChildren = children.length
-            const presentCount = children.filter((child: any) => child.attendance?.status === 'present').length
-            const attendanceRate = totalChildren > 0 ? (presentCount / totalChildren) * 100 : 0
-            
-            weeklyStats.push({
-              date: friday,
-              totalChildren,
-              presentCount,
-              attendanceRate
-            })
-          }
+          weeklyStats.push({
+            date: friday,
+            totalChildren,
+            presentCount,
+            attendanceRate
+          })
         }
       }
 
@@ -223,20 +180,7 @@ export default function ConsecutiveAttendancePage() {
     try {
       setDeliveryLoading(childId)
       
-      const token = localStorage.getItem('token') || 
-                   localStorage.getItem('auth_token') ||
-                   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2FiMDdmYjQ0NjhkMjEwMGUxZDA1NCIsInJvbGUiOiJhZG1pbiIsInVzZXJuYW1lIjoia2Vyb2xlcyIsImlhdCI6MTc1NDM5NDQ0MywiZXhwIjoxNzU0OTk5MjQzfQ._zOJADjrl1HcumdQhPU36tFOG4T1fUUiQd4UV8mOicFs'
-      
-      const response = await fetch(`${API_BASE_URL}/statistics/deliver-gift`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ childId })
-      })
-      
-      const data = await response.json()
+      const data = await statisticsAPI.deliverGift(childId)
       
       if (data.success) {
         // Show success message

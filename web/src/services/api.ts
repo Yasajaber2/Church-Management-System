@@ -602,6 +602,37 @@ export const statisticsAPI = {
         error: error.response?.data?.error || 'حدث خطأ في تحميل إحصائيات الطفل'
       }
     }
+  },
+
+  deliverGift: async (childId: string) => {
+    try {
+      console.log('Delivering gift for child:', childId)
+      const response = await api.post('/statistics/deliver-gift', { childId })
+      console.log('Gift delivered successfully')
+      return response.data
+    } catch (error: any) {
+      console.error('Error delivering gift:', error)
+      return {
+        success: false,
+        error: error.response?.data?.error || 'حدث خطأ في تسليم الهدية'
+      }
+    }
+  },
+
+  getConsecutiveAttendanceByClasses: async (classId?: string) => {
+    try {
+      const params = classId ? `?classId=${classId}` : ''
+      console.log('Fetching consecutive attendance by classes')
+      const response = await api.get(`/statistics/consecutive-attendance-by-classes${params}`)
+      console.log('Consecutive attendance fetched successfully')
+      return response.data
+    } catch (error: any) {
+      console.error('Error fetching consecutive attendance:', error)
+      return {
+        success: false,
+        error: error.response?.data?.error || 'حدث خطأ في تحميل بيانات المواظبة'
+      }
+    }
   }
 }
 
